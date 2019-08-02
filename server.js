@@ -6,8 +6,8 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-function Location(city, geoData) {
-  this.search_query = city;
+function Location(request, geoData) {
+  this.searchQuery = request;
   this.formatted_address = geoData.results[0].formatted_address;
   this.latitude = Number(geoData.results[0].geometry.location.lat);
   this.longitude = Number(geoData.results[0].geometry.location.lng);
@@ -24,13 +24,14 @@ app.use(cors());
 app.get("/location", (request, response) => {
   try {
     const geo = require("./data/geo.json");
-    console.log(request.query.data);
+      console.log(request.query.data);
     const blob = new Location(request.query.data, geo);
-    console.log(blob);
+      console.log(blob);
     response.send(blob);
-  } catch (error) {
-    handleError(error);
-  }
+      } catch(error){
+        console.log('There was an error!');
+        response.status(500).send('Server down');
+    }
 });
 
 app.get("/weather", (request, response) => {
@@ -38,31 +39,14 @@ app.get("/weather", (request, response) => {
     const weatherData = require("./data/darksky.json");
     const dailyWeather = Object.values(weatherData.daily.data);
     const blob = dailyWeather.map(day => new Forecast(day));
+    console.log(day)
     console.log(blob);
     response.send(blob);
-  } catch (error) {
-    handleError(error);
-  }
+  } catch(error){
+    console.log('There was an error!');
+    response.status(500).send('Server down');
+}
  });
 
-// app.get("/data", (request, response) => {
-//   let airplanes = {
-//     departure: Date.now(),
-//     canFly: true,
-//     pilot: "Well Trained"
-//   };
-//   response.status(200).json(airplanes);
-// });
-
-app.use("*", (request, response) =>
-  response.send("Sorry, that route does not exist.")
-);
-
-function handleError(err, response) {
-  console.error(err);
-  if (response) {
-    response.status(500).send("Sorry, something went wrong here.");
-  }
-}
 
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
