@@ -6,6 +6,7 @@ const cors = require('cors');
 const superagent = require(`superagent`)
 const app = express();
 const PORT = process.env.PORT || 3000;
+let currentLoc = null;
 
 function Location(request, geoData) {
   this.search_query = request;
@@ -26,11 +27,20 @@ function serchToLatLong(query){
   const url =`https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${process.env.GEOCODE_API_KEY}`;
   return superagent.get(url)
     .then(res => {
-      return new Location(query, res);
-
+      currentLoc = new Location(query, res);
+      return currentLoc;
     })
-
 }
+
+function darkskyWeather(lat, lon){
+  const url = `https://api.darksky.net/forecast/${process.env.DARK_SKY}/${lat},${lon}`;
+  return superagent.get(url)
+    .then(res => {
+      const dailyWeather = res.body.daily.data.map(day => new Forecast(day));
+      res.send(dailyWeather)
+    })
+}
+
 
 app.use(express.static('./public'));
 app.use(cors());
@@ -39,13 +49,18 @@ app.get('/location', (request, response) => {
   serchToLatLong(request.query.data)//Serch box entry
     .then(location => response.send(location));
 })
-// // app.get(`/location`, searchToLatLong);
 
-// app.get('/location', (request, response) => {
-//   // try {
-//     const geo = require('./data/geo.json');
-//     console.log(request.query.data);
-//     const blob = new Location(request.query.data, geo);
+app.get('/weather', (currentLoc, response) => {
+  console.log('starting')
+  darkskyWeather(currentLoc.latitude, currentLoc.longitude)
+    .then(weather => response.send(weather));
+})
+
+// app.get('/weather', (request, response) => {
+//   try {
+//     const weatherData = require('./data/darksky.json');
+//     const dailyWeather = Object.values(weatherData.daily.data);
+//     const blob = dailyWeather.map(day => new Forecast(day));
 //     console.log(blob);
 //     response.send(blob);
 //   } catch (error) {
@@ -53,31 +68,15 @@ app.get('/location', (request, response) => {
 //   }
 // });
 
-app.get('/weather', (request, response) => {
-  try {
-    const weatherData = require('./data/darksky.json');
-    const dailyWeather = Object.values(weatherData.daily.data);
-    const blob = dailyWeather.map(day => new Forecast(day));
-    console.log(blob);
-    response.send(blob);
-  } catch (error) {
-    handleError(error);
-  }
-});
+// app.use('*', (request, response) =>
+//   response.send('Sorry, that route does not exist.')
+// );
 
-
-
-
-
-app.use('*', (request, response) =>
-  response.send('Sorry, that route does not exist.')
-);
-
-function handleError(err, response) {
-  console.error(err);
-  if (response) {
-    response.status(500).send('Sorry, something went wrong here.');
-  }
-}
+// function handleError(err, response) {
+//   console.error(err);
+//   if (response) {
+//     response.status(500).send('Sorry, something went wrong here.');
+//   }
+// }
 
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
