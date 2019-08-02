@@ -1,13 +1,14 @@
-"use strict";
+'use strict';
 
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const superagent = require(`superagent`)
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-function Location(city, geoData) {
-  this.search_query = city;
+function Location(request, geoData) {
+  this.search_query = request;
   this.formatted_address = geoData.results[0].formatted_address;
   this.latitude = Number(geoData.results[0].geometry.location.lat);
   this.longitude = Number(geoData.results[0].geometry.location.lng);
@@ -16,10 +17,25 @@ function Location(city, geoData) {
 function Forecast(day) {
   this.forecast = day.summary;
   this.time = new Date(day.time * 1000).toString().slice(0, 15);
- }
+}
+
+function searchToLatLong(request, response) {
+   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${request.query.data}&key=${process.env.GEOCODE_API_KEY}`;
+   
+   return superagent.get(url)
+   .then(res => {
+    const location = new Location(request.query.data)
+    console.log('llama')
+    response.send(location)
+    })
+
+}
 
 app.use(express.static("./public"));
 app.use(cors());
+
+
+app.get(`/location`, searchToLatLong);
 
 app.get("/location", (request, response) => {
   try {
@@ -44,6 +60,9 @@ app.get("/weather", (request, response) => {
     handleError(error);
   }
  });
+
+ 
+ 
 
 
 app.use("*", (request, response) =>
