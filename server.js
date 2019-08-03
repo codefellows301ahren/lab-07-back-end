@@ -33,13 +33,21 @@ function serchToLatLong(query){
 }
 
 function darkskyWeather(lat, lon){
+  console.log('Getting Dark!!!')
   const url = `https://api.darksky.net/forecast/${process.env.DARK_SKY}/${lat},${lon}`;
+  const weatherSummaries =[];
   return superagent.get(url)
     .then(res => {
-      const dailyWeather = res.body.daily.data.map(day => new Forecast(day));
-      res.send(dailyWeather)
-    })
+      res.body.daily.data.forEach(day => {
+        weatherSummaries.push(new Forecast(day));
+        console.log(weatherSummaries)
+        console.log('finish Dark!!!')
+      });
+      return weatherSummaries;
+    });
 }
+
+
 
 
 app.use(express.static('./public'));
@@ -51,9 +59,13 @@ app.get('/location', (request, response) => {
 })
 
 app.get('/weather', (currentLoc, response) => {
-  console.log('starting')
-  darkskyWeather(currentLoc.latitude, currentLoc.longitude)
-    .then(weather => response.send(weather));
+  console.log('starting');
+  darkskyWeather(currentLoc.query.data.latitude, currentLoc.query.data.longitude)
+    .then(weather => {
+      console.log(weather, 'llama');
+      response.send(weather);
+      console.log(`Sent Weather`)
+    })
 })
 
 // app.get('/weather', (request, response) => {
