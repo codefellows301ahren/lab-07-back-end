@@ -8,11 +8,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 let currentLoc = null;
 
+
 function Location(request, geoData) {
   this.search_query = request;
   this.formatted_address = geoData.body.results[0].formatted_address;
   this.latitude = Number(geoData.body.results[0].geometry.location.lat);
   this.longitude = Number(geoData.body.results[0].geometry.location.lng);
+}
+
+function EventData(request){
+  this.link = request.url
+  this.name = request.name.text
+  this.event_date = request.start.local
+  this.summary = request.summary
 }
 
 function Forecast(day) {
@@ -28,12 +36,13 @@ function serchToLatLong(query){
   return superagent.get(url)
     .then(res => {
       currentLoc = new Location(query, res);
+
       return currentLoc;
     })
 }
 
 function darkskyWeather(lat, lon){
-  console.log('Getting Dark!!!')
+  // console.log('Getting Dark!!!')
   const url = `https://api.darksky.net/forecast/${process.env.DARK_SKY}/${lat},${lon}`;
   const weatherSummaries =[];
   return superagent.get(url)
@@ -41,12 +50,25 @@ function darkskyWeather(lat, lon){
       res.body.daily.data.forEach(day => {
         weatherSummaries.push(new Forecast(day));
         console.log(weatherSummaries)
-        console.log('finish Dark!!!')
+        // console.log('finish Dark!!!')
       });
       return weatherSummaries;
     });
 }
-
+function getEvent(request, response){
+  console.log('Getting Events!!!')
+  const url = `https://www.eventbriteapi.com/v3/events/search?token=${process.env.EVENT_BRIGHT_API}&location.address=${request.query.data.search_query}`;
+  console.log(request.query.data.search_query, 'im what you are looking for!!!')
+  return superagent.get(url)
+    .then(res =>{
+      let events = res.body.events.map(data =>{
+        let eventData = new EventData(data)
+        return eventData
+      })
+      // console.log(events)
+      response.send(events);
+    })
+}
 
 
 
@@ -59,36 +81,17 @@ app.get('/location', (request, response) => {
 })
 
 app.get('/weather', (currentLoc, response) => {
-  console.log('starting');
+  // console.log('starting');
   darkskyWeather(currentLoc.query.data.latitude, currentLoc.query.data.longitude)
     .then(weather => {
-      console.log(weather, 'llama');
       response.send(weather);
-      console.log(`Sent Weather`)
+      // console.log(`Sent Weather`)
     })
 })
 
-// app.get('/weather', (request, response) => {
-//   try {
-//     const weatherData = require('./data/darksky.json');
-//     const dailyWeather = Object.values(weatherData.daily.data);
-//     const blob = dailyWeather.map(day => new Forecast(day));
-//     console.log(blob);
-//     response.send(blob);
-//   } catch (error) {
-//     handleError(error);
-//   }
-// });
+app.get('/events',(getEvent));
 
-// app.use('*', (request, response) =>
-//   response.send('Sorry, that route does not exist.')
-// );
 
-// function handleError(err, response) {
-//   console.error(err);
-//   if (response) {
-//     response.status(500).send('Sorry, something went wrong here.');
-//   }
-// }
+// console.log(`Sent Events`)
 
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
