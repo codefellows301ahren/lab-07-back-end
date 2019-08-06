@@ -4,10 +4,17 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const superagent = require(`superagent`)
+const pg = require('pg')
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 let currentLoc = null;
 
+// database setup
+const client = new pg.Client(process.env.DATABASE_URL);
+client.connect();
+client.on('error', err => console.error(err));
 
 function Location(request, geoData) {
   this.search_query = request;
@@ -36,7 +43,6 @@ function serchToLatLong(query){
   return superagent.get(url)
     .then(res => {
       currentLoc = new Location(query, res);
-
       return currentLoc;
     })
 }
@@ -73,6 +79,7 @@ function getEvent(request, response){
 
 
 app.use(express.static('./public'));
+
 app.use(cors());
 
 app.get('/location', (request, response) => {
